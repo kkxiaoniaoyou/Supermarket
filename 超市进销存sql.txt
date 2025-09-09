@@ -1,0 +1,818 @@
+超市进销存系统的数据库使用sqlserver，包含如下实体
+
+根据下面实体设计绘制er图
+实体设计：
+员工（编号，名称，密码，部门编号，类型（销售员，采购员，管理员））
+角色（角色编号，名称，描述，创建时间，更新时间）
+权限（编号，权限名称，权限路径，权限描述，创建时间，更新时间）
+部门（编号，部门名称，部门描述）
+客户（编号，名称，密码 ,电话，邮箱，等级）
+供应商（编号，名称，执照，地址，联系电话）
+商品（编号，名称，描述，成本价，图片，有效期）
+商品预约（编号，客户编号，名称，状态，员工编号）
+商品预约明细（商品预约编号、客户编号，商品名称，预约数量，供应商编号）
+超市库存（库存编号，商品编号，售价，库存数量）
+进货单（单号，名称，时间，总价格, 状态（是否入库））
+进货明细（单号，进货单编号，商品编号，商品数量，供应商编号，员工编号，进货价格）
+退货单（单号，名称，时间，总价格）
+退货明细（单号，退货单编号，商品编号，退货数量，供应商编号，员工编号，进货价格）
+销售单（单号，商品编号，销售数量，销售价格，员工编号, 状态（是否出库））
+销售退货单（单号，商品编号，销售数量，销售价格，员工编号, 状态（是否入库））
+
+=========================================数据表（已经测试过）================================================
+
+CREATE DATABASE SupermarketDB;
+
+USE SupermarketDB;
+
+CREATE TABLE Department (
+    Id INT PRIMARY KEY,
+    DepartmentName NVARCHAR(50),
+    DepartmentDescription NVARCHAR(255)
+);
+-- 部门表
+
+CREATE TABLE Employee (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Password NVARCHAR(50),
+    Email NVARCHAR(100),
+    PhoneNumber NVARCHAR(15),
+    DepartmentId INT FOREIGN KEY REFERENCES Department(Id),
+    Type NVARCHAR(50)
+);
+
+-- 员工表
+
+CREATE TABLE Roles(
+    RoleID INT PRIMARY KEY IDENTITY,
+    RoleName NVARCHAR(50) NOT NULL,
+    Description NVARCHAR(255),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME
+);
+
+-- 角色表
+
+CREATE TABLE Permissions(
+    PermissionID INT PRIMARY KEY IDENTITY,
+    PermissionName NVARCHAR(50) NOT NULL,
+    PermissionPath NVARCHAR(50) NOT NULL,
+    Description NVARCHAR(255),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    UpdatedAt DATETIME
+);
+
+-- 权限表
+
+CREATE TABLE UserRoles(
+    UserID INT FOREIGN KEY REFERENCES Employee(Id),
+    RoleID INT FOREIGN KEY REFERENCES Roles(RoleID),
+    PRIMARY KEY (UserID, RoleID)
+);
+
+-- 员工与角色关系表
+
+
+CREATE TABLE RolePermissions(
+    RoleID INT FOREIGN KEY REFERENCES Roles(RoleID),
+    PermissionID INT FOREIGN KEY REFERENCES Permissions(PermissionID),
+    PRIMARY KEY (RoleID, PermissionID)
+);
+
+-- 角色与权限关系表
+
+CREATE TABLE Customer (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Password NVARCHAR(50),
+    Phone NVARCHAR(20),
+    Email NVARCHAR(50),
+    Level NVARCHAR(50)
+);
+
+-- 会员表
+
+CREATE TABLE Supplier (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Licence NVARCHAR(50),
+    Address NVARCHAR(100),
+    Phone NVARCHAR(20)
+);
+
+-- 供应商表
+
+CREATE TABLE Product (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Description NVARCHAR(255),
+    CostPrice DECIMAL(18, 2),
+    Image VARBINARY(MAX),   -- 商品图片
+    ExpiryDate DATETIME
+);
+
+
+==================插入图片特别说明（已经测试过）=========================================
+DECLARE @ImageData VARBINARY(MAX);
+ 
+SELECT @ImageData = BulkColumn FROM OPENROWSET(BULK N'你的图片文件路径', SINGLE_BLOB) as Image;
+update Product set Image = @ImageData where Id = 1
+ 
+INSERT INTO Product (Id,Name,Description,CostPrice,Image,ExpiryDate) VALUES (1,'商品名称','商品描述',10.00,@ImageData,'2024-03-12 11:11:11');
+
+DECLARE @ImageData VARBINARY(MAX);
+ 
+SELECT @ImageData = BulkColumn FROM OPENROWSET(BULK N'C:\Users\18350\Pictures\62123.jpg', SINGLE_BLOB) as Image;
+update Product set Image = @ImageData where Id = 1
+=========================================================================
+
+
+-- 商品表
+
+CREATE TABLE ProductReservation (
+    Id INT PRIMARY KEY,
+    CustomerId INT FOREIGN KEY REFERENCES Customer(Id),
+    Name NVARCHAR(50),
+    Status NVARCHAR(50),
+    EmployeeId INT FOREIGN KEY REFERENCES Employee(Id),
+    CreatedAt DATETIME DEFAULT GETDATE(),
+);
+
+-- 商品预约表
+
+CREATE TABLE ProductReservationDetail (
+    ProductReservationId INT FOREIGN KEY REFERENCES ProductReservation(Id),
+    CustomerId INT FOREIGN KEY REFERENCES Customer(Id),
+    ProductName NVARCHAR(50),
+    ReservationQuantity INT,
+    SupplierId INT FOREIGN KEY REFERENCES Supplier(Id)
+);
+
+-- 商品预约详情
+
+CREATE TABLE Inventory (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    ProductId INT FOREIGN KEY REFERENCES Product(Id),
+    SalePrice DECIMAL(18, 2),
+    StockQuantity INT
+);
+
+-- 库存表
+
+CREATE TABLE PurchaseOrder (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Time DATETIME,
+    TotalPrice DECIMAL(18, 2),
+    IsInStock BIT
+);
+
+-- 采购单表
+
+CREATE TABLE PurchaseOrderDetail (
+    PurchaseOrderId INT FOREIGN KEY REFERENCES PurchaseOrder(Id),
+    ProductId INT FOREIGN KEY REFERENCES Product(Id),
+    ProductQuantity INT,
+    SupplierId INT FOREIGN KEY REFERENCES Supplier(Id),
+    EmployeeId INT FOREIGN KEY REFERENCES Employee(Id),
+    PurchasePrice DECIMAL(18, 2)
+);
+
+-- 采购单明细表
+
+CREATE TABLE ReturnOrder (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(50),
+    Time DATETIME,
+    TotalPrice DECIMAL(18, 2)
+);
+
+-- 采购退款单表
+
+CREATE TABLE ReturnOrderDetail (
+    ReturnOrderId INT FOREIGN KEY REFERENCES ReturnOrder(Id),
+    ProductId INT FOREIGN KEY REFERENCES Product(Id),
+    ReturnQuantity INT,
+    SupplierId INT FOREIGN KEY REFERENCES Supplier(Id),
+    EmployeeId INT FOREIGN KEY REFERENCES Employee(Id),
+    PurchasePrice DECIMAL(18, 2)
+);
+
+-- 采购退款单详情表
+
+CREATE TABLE SalesOrder (
+    Id INT PRIMARY KEY,
+    ProductId INT FOREIGN KEY REFERENCES Product(Id),
+    SalesQuantity INT,
+    SalesPrice DECIMAL(18, 2),
+    EmployeeId INT FOREIGN KEY REFERENCES Employee(Id),
+    IsOutOfStock BIT
+);
+
+-- 销售单表
+
+CREATE TABLE SalesReturnOrder (
+    Id INT PRIMARY KEY,
+    ProductId INT FOREIGN KEY REFERENCES Product(Id),
+    SalesQuantity INT,
+    SalesPrice DECIMAL(18, 2),
+    EmployeeId INT FOREIGN KEY REFERENCES Employee(Id),
+    CustomerId INT FOREIGN KEY REFERENCES Customer(Id),
+    IsInStock BIT
+);
+-- 销售退单表
+
+CREATE TABLE SupplierProduct (
+  ProductId int  NOT NULL FOREIGN KEY REFERENCES Product(Id),
+  SupplierId int  NOT NULL FOREIGN KEY REFERENCES Supplier(Id),
+);
+
+-- 供应商和商品关系表
+
+============================== 存储过程&触发器（已经测试过）=================================
+
+----------------------------------------------------------------------
+CREATE TRIGGER trg_InsertProduct
+ON Product
+AFTER INSERT
+AS
+BEGIN
+    INSERT INTO Inventory (ProductId, SalePrice, StockQuantity)
+    SELECT Id, CostPrice, 0
+    FROM inserted
+END;
+--编写触发器，每当插入Product表时同步根据Product插入的数据插入一条数据到Inventory中
+
+--触发
+INSERT INTO Product (Id, Name, Description, CostPrice, Image, ExpiryDate)
+VALUES (2, '产品2', '产品2的描述', 100.00, NULL, '2023-12-31 23:59:59');
+--还原
+delete from Product where Id = 2
+delete from Inventory where ProductId = 2
+
+
+--------------------------------------------------------------------------
+
+CREATE TRIGGER trg_PurchaseUpdateInventoryStock
+ON PurchaseOrder
+AFTER UPDATE
+AS
+BEGIN
+    IF UPDATE(IsInStock) AND (SELECT IsInStock FROM inserted) = 1
+    BEGIN
+        DECLARE @PurchaseOrderId INT
+        SELECT @PurchaseOrderId = Id FROM inserted
+
+        UPDATE Inventory
+        SET StockQuantity = StockQuantity + pd.ProductQuantity
+        FROM Inventory i
+        JOIN PurchaseOrderDetail pd ON i.ProductId = pd.ProductId
+        WHERE pd.PurchaseOrderId = @PurchaseOrderId
+    END
+END
+-- 创建触发器，当更新PurchaseOrder表字段IsInStock为1时，根据PurchaseOrder字段id查询PurchaseOrderDetail中所有PurchaseOrderId数据，并且更具查询到的数据更新Inventory库存信息
+
+-- 触发（不断触发商品会不断增加）
+update PurchaseOrder set IsInStock = 1 where IsInStock = 0 
+
+-- 还原
+update PurchaseOrder set IsInStock = 0 where IsInStock = 1 
+
+------------------------------------------------------------------------------
+
+CREATE TRIGGER trg_UpdateInventoryOnReturnOrderDetailInsert
+ON ReturnOrderDetail
+AFTER INSERT
+AS
+BEGIN
+    -- 声明变量
+    DECLARE @ProductId INT, @ReturnQuantity INT
+
+    -- 获取插入的数据
+    SELECT @ProductId = ProductId, @ReturnQuantity = ReturnQuantity FROM inserted
+
+    -- 更新Inventory表中的StockQuantity
+    UPDATE Inventory
+    SET StockQuantity = StockQuantity - @ReturnQuantity
+    WHERE ProductId = @ProductId
+END
+-- 创建触发器当插入ReturnOrderDetail记录时根据插入的ProductId更新Inventory表数据
+
+-- 触发
+INSERT INTO ReturnOrderDetail (ReturnOrderId, ProductId, ReturnQuantity, SupplierId, EmployeeId, PurchasePrice)
+VALUES (1, 1, 1, 1, 1, 99.99);
+-- 还原
+delete from ReturnOrderDetail where  ReturnOrderId =1
+
+
+------------------------------------------------------------------------------
+CREATE TRIGGER trg_SalesOrderUpdateInventory
+ON SalesOrder
+AFTER UPDATE
+AS
+BEGIN
+    IF UPDATE(IsOutOfStock) AND (SELECT IsOutOfStock FROM inserted) = 1
+    BEGIN
+        DECLARE @ProductId INT
+        SELECT @ProductId = ProductId FROM inserted
+
+        UPDATE Inventory
+        SET StockQuantity = StockQuantity - (SELECT SalesQuantity FROM inserted)
+        WHERE ProductId = @ProductId
+    END
+END
+GO
+-- 创建触发器，当更新SalesOrder表字段IsOutOfStock为1时，根据SalesOrder字段ProductId更新Inventory库存信息
+
+-- 触发（不断触发商品会不断减少）
+update SalesOrder set IsOutOfStock = 1 where IsOutOfStock = 0 
+
+-- 还原
+update SalesOrder set IsOutOfStock = 0 where IsOutOfStock = 1 
+
+
+-----------------------------------------------------------------------------
+CREATE TRIGGER trg_SalesReturnOrderUpdateInventory
+ON SalesReturnOrder
+AFTER UPDATE
+AS
+BEGIN
+    IF UPDATE(IsInStock) AND (SELECT IsInStock FROM inserted) = 1
+    BEGIN
+        UPDATE Inventory
+        SET StockQuantity = StockQuantity + (SELECT SalesQuantity FROM inserted)
+        WHERE ProductId IN (SELECT ProductId FROM inserted)
+    END
+END
+GO
+-- 创建触发器，当更新SalesReturnOrder表字段IsInStock为1时，根据SalesReturnOrder字段ProductId更新Inventory库存信息
+
+-- 触发（不断触发商品会不断增加）
+update SalesReturnOrder set IsInStock = 1 where IsInStock = 0 
+
+-- 还原
+update SalesReturnOrder set IsInStock = 0 where IsInStock = 1 
+
+==========================================================================
+
+CREATE PROCEDURE GetEmployeeProductSales
+AS
+BEGIN
+    SELECT 
+        E.Name AS EmployeeName,
+        P.Name AS ProductName,
+        SUM(SO.SalesQuantity) AS TotalSalesQuantity
+    FROM 
+        Employee E
+    JOIN 
+        SalesOrder SO ON E.Id = SO.EmployeeId
+    JOIN 
+        Product P ON SO.ProductId = P.Id
+    GROUP BY 
+        E.Name, P.Name;
+END;
+
+-- 创建一个存储过程：查询每个员工每个商品的销售数量返回
+
+EXEC GetEmployeeProductSales
+
+=========================================================================
+
+CREATE PROCEDURE GetEmployeeProductPurchaseQuantity
+AS
+BEGIN
+    SELECT 
+        E.Name AS EmployeeName,
+        P.Name AS ProductName,
+        SUM(POD.ProductQuantity) AS TotalQuantity
+    FROM 
+        Employee E
+        JOIN PurchaseOrderDetail POD ON E.Id = POD.EmployeeId
+        JOIN Product P ON POD.ProductId = P.Id
+    GROUP BY 
+        E.Name, P.Name;
+END;
+-- 创建存储过程统计每个员工每个商品采购数量返回
+
+EXEC GetEmployeeProductSales
+
+========================================================================
+CREATE FUNCTION dbo.GetEmployeeSupplierProductReturnCount()
+RETURNS TABLE
+AS
+RETURN (
+    SELECT 
+        E.Id AS EmployeeId,
+        E.Name AS EmployeeName,
+        S.Id AS SupplierId,
+        S.Name AS SupplierName,
+        P.Id AS ProductId,
+        P.Name AS ProductName,
+        SUM(ROD.ReturnQuantity) AS TotalReturnQuantity
+    FROM 
+        Employee E
+        INNER JOIN ReturnOrderDetail ROD ON E.Id = ROD.EmployeeId
+        INNER JOIN Supplier S ON ROD.SupplierId = S.Id
+        INNER JOIN Product P ON ROD.ProductId = P.Id
+    GROUP BY 
+        E.Id, E.Name,
+        S.Id, S.Name,
+        P.Id, P.Name
+);
+
+CREATE PROCEDURE GetEmployeeSupplierProductReturnCount
+AS
+BEGIN
+    SELECT 
+        E.Id AS EmployeeId,
+        E.Name AS EmployeeName,
+        S.Id AS SupplierId,
+        S.Name AS SupplierName,
+        P.Id AS ProductId,
+        P.Name AS ProductName,
+        SUM(ROD.ReturnQuantity) AS TotalReturnQuantity
+    FROM 
+        Employee E
+        INNER JOIN ReturnOrderDetail ROD ON E.Id = ROD.EmployeeId
+        INNER JOIN Supplier S ON ROD.SupplierId = S.Id
+        INNER JOIN Product P ON ROD.ProductId = P.Id
+    GROUP BY 
+        E.Id, E.Name,
+        S.Id, S.Name,
+        P.Id, P.Name;
+END;
+
+-- 创建函数，统计每个员工每个供应商每个商品退货数量返回
+
+SELECT dbo.GetEmployeeSupplierProductReturnCount() AS Result
+==========================================================================
+CREATE FUNCTION GetProductReservationCount()
+RETURNS TABLE
+AS
+RETURN (
+    SELECT
+        CustomerId,
+        SupplierId,
+        ProductName,
+        SUM(ReservationQuantity) AS TotalReservationQuantity
+    FROM
+        ProductReservationDetail
+    GROUP BY
+        CustomerId,
+        SupplierId,
+        ProductName
+);
+
+CREATE PROCEDURE GetProductReservationCount
+AS
+BEGIN
+     SELECT
+        CustomerId,
+        SupplierId,
+        ProductName,
+        SUM(ReservationQuantity) AS TotalReservationQuantity
+    FROM
+        ProductReservationDetail
+    GROUP BY
+        CustomerId,
+        SupplierId,
+        ProductName;
+END;
+
+-- 创建函数统计每个客户每个供应商每个商品被预约的数量并且返回
+
+SELECT dbo.GetProductReservationCount() AS Result
+
+==================================视图（已经测试过）=======================================
+
+CREATE VIEW [dbo].[EmployeeView] AS SELECT
+	Department.DepartmentName, 
+	Employee.Name, 
+	Employee.Password, 
+	Employee.Id, 
+	Employee.Email, 
+	Employee.PhoneNumber
+FROM
+	dbo.Department
+	INNER JOIN
+	dbo.Employee
+	ON 
+		Department.Id = Employee.DepartmentId
+-- 员工视图
+
+
+CREATE VIEW [dbo].[ProductInventoryView] AS SELECT
+	Product.Name AS ProductName, 
+	Supplier.Name AS SupplierName, 
+	Product.CostPrice, 
+	Product.Description, 
+	Product.Image, 
+	Product.ExpiryDate, 
+	Inventory.SalePrice, 
+	Inventory.StockQuantity
+FROM
+	dbo.Product
+	INNER JOIN
+	dbo.SupplierProduct
+	ON 
+		Product.Id = SupplierProduct.ProductId
+	INNER JOIN
+	dbo.Supplier
+	ON 
+		SupplierProduct.SupplierId = Supplier.Id
+	INNER JOIN
+	dbo.Inventory
+	ON 
+		Product.Id = Inventory.ProductId
+
+--商品库存视图
+
+CREATE VIEW [dbo].[ProductPurchaseView] AS SELECT
+	PurchaseOrder.Name, 
+	PurchaseOrder.[Time], 
+	PurchaseOrder.TotalPrice, 
+	PurchaseOrder.IsInStock, 
+	Product.Name AS ProductName, 
+	PurchaseOrderDetail.ProductQuantity, 
+	PurchaseOrderDetail.SupplierId, 
+	PurchaseOrderDetail.PurchasePrice, 
+	Supplier.Name AS SupplierName, 
+	Employee.Name AS EmployeeName
+FROM
+	dbo.PurchaseOrder
+	INNER JOIN
+	dbo.PurchaseOrderDetail
+	ON 
+		PurchaseOrder.Id = PurchaseOrderDetail.PurchaseOrderId
+	INNER JOIN
+	dbo.Product
+	ON 
+		PurchaseOrderDetail.ProductId = Product.Id
+	INNER JOIN
+	dbo.Supplier
+	ON 
+		PurchaseOrderDetail.SupplierId = Supplier.Id
+	INNER JOIN
+	dbo.Employee
+	ON 
+		PurchaseOrderDetail.EmployeeId = Employee.Id
+WHERE
+	PurchaseOrder.IsInStock = 1
+--商品采购视图
+
+CREATE VIEW [dbo].[ProductReservationView] AS SELECT
+	ProductReservation.*, 
+	Employee.Name AS EmployeeName, 
+	Customer.Name AS CustomerName, 
+	ProductReservationDetail.ProductName, 
+	ProductReservationDetail.ReservationQuantity, 
+	Supplier.Name AS SupplierName
+FROM
+	dbo.Customer
+	INNER JOIN
+	dbo.ProductReservation
+	ON 
+		Customer.Id = ProductReservation.CustomerId
+	INNER JOIN
+	dbo.Employee
+	ON 
+		ProductReservation.EmployeeId = Employee.Id
+	INNER JOIN
+	dbo.ProductReservationDetail
+	ON 
+		Customer.Id = ProductReservationDetail.CustomerId AND
+		ProductReservation.Id = ProductReservationDetail.ProductReservationId
+	INNER JOIN
+	dbo.Supplier
+	ON 
+		ProductReservationDetail.SupplierId = Supplier.Id
+
+-- 商品预约视图
+
+
+CREATE VIEW [dbo].[ProductreturnView] AS SELECT
+	ReturnOrder.Name, 
+	ReturnOrder.[Time], 
+	ReturnOrder.TotalPrice, 
+	ReturnOrderDetail.ReturnQuantity, 
+	ReturnOrderDetail.PurchasePrice, 
+	Product.Name AS ProductName, 
+	Employee.Name AS EmployeeName, 
+	Supplier.Name AS SupplierName
+FROM
+	dbo.ReturnOrder
+	INNER JOIN
+	dbo.ReturnOrderDetail
+	ON 
+		ReturnOrder.Id = ReturnOrderDetail.ReturnOrderId
+	INNER JOIN
+	dbo.Product
+	ON 
+		ReturnOrderDetail.ProductId = Product.Id
+	INNER JOIN
+	dbo.Employee
+	ON 
+		ReturnOrderDetail.EmployeeId = Employee.Id
+	INNER JOIN
+	dbo.Supplier
+	ON 
+		ReturnOrderDetail.SupplierId = Supplier.Id
+
+--商品预约退货视图
+
+CREATE VIEW [dbo].[ProductSaleReturnView] AS SELECT
+	SalesReturnOrder.SalesQuantity, 
+	Product.Name AS ProductName, 
+	Product.CostPrice, 
+	SalesReturnOrder.SalesPrice, 
+	SalesReturnOrder.IsInStock, 
+	SalesReturnOrder.Id, 
+	Employee.Name AS EmployeeName, 
+	Customer.Name AS CustomerName
+FROM
+	dbo.SalesReturnOrder
+	INNER JOIN
+	dbo.Product
+	ON 
+		SalesReturnOrder.ProductId = Product.Id
+	INNER JOIN
+	dbo.Employee
+	ON 
+		SalesReturnOrder.EmployeeId = Employee.Id
+	INNER JOIN
+	dbo.Customer
+	ON 
+		SalesReturnOrder.CustomerId = Customer.Id
+WHERE
+	SalesReturnOrder.IsInStock = 1
+--商品销售退货视图
+
+CREATE VIEW [dbo].[ProductSalesView] AS SELECT
+	Product.Name, 
+	Product.CostPrice, 
+	SalesOrder.SalesQuantity, 
+	SalesOrder.SalesPrice, 
+	SalesOrder.EmployeeId, 
+	SalesOrder.Id, 
+	SalesOrder.IsOutOfStock, 
+	Supplier.Name AS SupplierName
+FROM
+	dbo.Product
+	INNER JOIN
+	dbo.SalesOrder
+	ON 
+		Product.Id = SalesOrder.ProductId
+	INNER JOIN
+	dbo.SupplierProduct
+	ON 
+		Product.Id = SupplierProduct.ProductId
+	INNER JOIN
+	dbo.Supplier
+	ON 
+		SupplierProduct.SupplierId = Supplier.Id
+WHERE
+	SalesOrder.IsOutOfStock = 1
+--商品销售视图
+
+==================================索引（已经测试过）=========================================
+
+CREATE UNIQUE NONCLUSTERED INDEX [index_cname] ON [dbo].[Customer] ([Name] ASC)   -- 创建客户名称唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_DepartmentName] ON [dbo].[Department] ([DepartmentName] ASC) -- 创建部门名称唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_EName] ON [dbo].[Employee] ([Name] ASC) -- 创建员工名称唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_PermissionName] ON [dbo].[Permissions] ([PermissionName] ASC) -- 创建权限名称唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_PName] ON [dbo].[Product] ([Name] ASC) -- 创建商品名称唯一索引
+CREATE NONCLUSTERED INDEX [index_date] ON [dbo].[Product] ([ExpiryDate] ASC) -- 商品上架日期索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_PDName] ON [dbo].[ProductReservation] ([Name] ASC) -- 创建部门名称唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_RoleName] ON [dbo].[Roles] ([RoleName] ASC) -- 创建角色名唯一索引
+CREATE UNIQUE NONCLUSTERED INDEX [index_SName] ON [dbo].[Supplier] ([Name] ASC) -- 创建供应商名唯一索引
+
+===================================完整性约束（已经测试过）====================================
+
+alter table Product add constraint CK_Product_CostPrice check(CostPrice>=0)  --商品价格
+alter table Inventory add constraint CK_Inventory_SalePrice check(SalePrice>=0)  --商品库存售价
+alter table Inventory add constraint CK_Inventory_StockQuantity check(StockQuantity>=0)  --商品库存数量
+alter table ProductReservation add constraint CK_ProductReservation_Status  check(Status='未处理' or Status='已受理' or Status='已拒绝') -- 预约状态
+alter table ProductReservationDetail add constraint CK_ProductReservationDetail_ReservationQuantity  check(ReservationQuantity>=0)  --商品预约数量
+alter table PurchaseOrderDetail add constraint CK_PurchaseOrderDetail_PurchasePrice  check(PurchasePrice>=0)  -- 采购单价
+alter table PurchaseOrder add constraint CK_PurchaseOrder_TotalPrice  check(TotalPrice>=0)  -- 采购价格
+alter table PurchaseOrderDetail add constraint CK_PurchaseOrderDetail_ProductQuantity  check(ProductQuantity>=0)  -- 采购数量
+alter table ReturnOrder add constraint CK_ReturnOrder_TotalPrice  check(TotalPrice>=0)    -- 退货单价格
+alter table ReturnOrderDetail add constraint CK_ReturnOrderDetail_ReturnQuantity  check(ReturnQuantity>=0)  -- 退货单商品数量
+alter table ReturnOrderDetail add constraint CK_ReturnOrderDetail_PurchasePrice  check(PurchasePrice>=0)  -- 退货单商品单价
+alter table SalesOrder add constraint CK_SalesOrder_SalesQuantity  check(SalesQuantity>=0)   -- 销售单商品数量
+alter table SalesOrder add constraint CK_SalesOrder_SalesPrice  check(SalesPrice>=0)   -- 销售单价格
+alter table SalesReturnOrder add constraint CK_SalesReturnOrder_SalesQuantity  check(SalesQuantity>=0)   -- 销售退货单商品数量
+alter table SalesReturnOrder add constraint CK_SalesReturnOrder_SalesPrice  check(SalesPrice>=0)   -- 销售退货单商品价格
+
+
+
+alter table Inventory add constraint de_Inventory_StockQuantity default 0 for StockQuantity  -- 默认库存0
+alter table ProductReservation add constraint de_ProductReservation_Status default '未处理' for Status  -- 预约状态
+alter table PurchaseOrder add constraint de_PurchaseOrder_IsInStock default 0 for IsInStock  -- 默认未入库
+alter table SalesOrder add constraint de_SalesOrder_IsOutOfStock default 0 for IsOutOfStock  -- 默认未出库
+alter table SalesReturnOrder add constraint de_SalesReturnOrder_IsInStock default 0 for IsInStock  -- 默认未入库
+
+
+=====================================安全性（未经测试过）========================================
+-- 创建登录账户（采购员）
+CREATE LOGIN Bella WITH PASSWORD = 'yourStrongPassword!#';
+ 
+-- 为登录账户创建数据库用户
+CREATE USER BellaUser FOR LOGIN Bella;
+ 
+-- 授权数据库用户访问特定数据库的权限
+EXEC sp_addrolemember 'SupermarketDB', 'BellaUser';
+-- 或者授予特定表的查询权限
+GRANT SELECT ON * TO BellaUser;
+GRANT UPDATE ON Inventory,ProductReservation,ProductReservationDetail,PurchaseOrder,PurchaseOrderDetail,ReturnOrder,ReturnOrderDetail TO BellaUser;
+GRANT INSERT ON Inventory,ProductReservation,ProductReservationDetail,PurchaseOrder,PurchaseOrderDetail,ReturnOrder,ReturnOrderDetail TO BellaUser;
+GRANT DELETE ON Inventory,ProductReservation,ProductReservationDetail,PurchaseOrder,PurchaseOrderDetail,ReturnOrder,ReturnOrderDetail TO BellaUser;
+
+
+
+-- 创建登录账户（销售员）
+CREATE LOGIN Aella WITH PASSWORD = 'yourStrongPassword!#';
+ 
+-- 为登录账户创建数据库用户
+CREATE USER AellaUser FOR LOGIN Aella;
+ 
+-- 授权数据库用户访问特定数据库的权限
+EXEC sp_addrolemember 'SupermarketDB', 'AellaUser';
+-- 或者授予特定表的查询权限
+GRANT SELECT ON * TO AellaUser;
+GRANT UPDATE ON Inventory,ProductReservation,ProductReservationDetail,SalesOrder,SalesReturnOrder TO AellaUser;
+GRANT INSERT ON Inventory,ProductReservation,ProductReservationDetail,SalesOrder,SalesReturnOrder TO AellaUser;
+GRANT DELETE ON Inventory,ProductReservation,ProductReservationDetail,SalesOrder,SalesReturnOrder TO AellaUser;
+
+
+
+
+-- 创建登录账户（企业管理员）
+CREATE LOGIN Admin WITH PASSWORD = 'yourStrongPassword!#';
+ 
+-- 为登录账户创建数据库用户
+CREATE USER AdminUser FOR LOGIN Admin;
+ 
+-- 授权数据库用户访问特定数据库的权限
+EXEC sp_addrolemember 'SupermarketDB', 'AdminUser';
+-- 或者授予特定表的查询权限
+GRANT SELECT ON * TO AdminUser;
+GRANT UPDATE ON Inventory,Product,Customer,Department,Employee,Permissions,Supplier,Roles,RolePermissions,SupplierProduct,UserRoles TO AdminUser;
+GRANT INSERT ON Inventory,Product,Customer,Department,Employee,Permissions,Supplier,Roles,RolePermissions,SupplierProduct,UserRoles TO AdminUser;
+GRANT DELETE ON Inventory,Product,Customer,Department,Employee,Permissions,Supplier,Roles,RolePermissions,SupplierProduct,UserRoles TO AdminUser;
+
+===========================================实施维护计划（未经测试过）=======================================================
+USE [SupermarketDB]
+GO
+ 
+-- 创建维护计划
+EXEC dbo.sp_add_maintenance_plan 
+    @plan_name = N'DBBackupPlan', 
+    @plan_id = NULL, 
+    @database_name = N'SupermarketDBSlave',  -- 替换为你的数据库名
+    @plan_description = N'Daily database backup';
+GO
+ 
+-- 添加备份数据库任务到计划中
+DECLARE @maintenance_plan_id UNIQUEIDENTIFIER;
+EXECUTE msdb.dbo.sp_help_maintenance_plan N'DBBackupPlan', @maintenance_plan_id = @maintenance_plan_id OUTPUT;
+ 
+EXEC dbo.sp_add_maintenance_plan_job 
+    @job_name = N'Job_DBBackupPlan', 
+    @plan_id = @maintenance_plan_id;
+GO
+ 
+-- 创建备份任务
+DECLARE @job_id UNIQUEIDENTIFIER;
+EXECUTE msdb.dbo.sp_help_job N'Job_DBBackupPlan', @job_id = @job_id OUTPUT;
+ 
+EXEC dbo.sp_add_jobstep 
+    @job_id = @job_id, 
+    @step_name = N'BackupDatabase',
+    @subsystem = N'TSQL',
+    @command = N'BACKUP DATABASE [YourDatabaseName] TO DISK = N''D:\Backups\YourDatabaseName.bak'' WITH INIT , NOUNLOAD , NAME = N''YourDatabaseName-完整 数据库 备份'', DESCRIPTION = N''',
+    @retry_attempts = 5, 
+    @retry_interval = 5;
+GO
+ 
+-- 创建调度
+EXEC dbo.sp_add_jobschedule 
+    @job_id = @job_id, 
+    @name = N'DailyBackupSchedule', 
+    @enabled = 1,
+    @freq_type = 4, 
+    @freq_interval = 1,
+    @freq_subday_type = 1,
+    @freq_subday_interval = 0,
+    @freq_relative_interval = 0,
+    @freq_recurrence_factor = 0,
+    @active_start_time = 138000; -- 1点开始，格式为HHMMSS
+GO
+ 
+-- 添加维护计划作业关联
+EXEC dbo.sp_update_maintenance_plan 
+    @plan_id = @maintenance_plan_id, 
+    @job_id = @job_id;
+GO
+
