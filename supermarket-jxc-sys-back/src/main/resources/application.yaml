@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: sprigboot-back-template
+  profiles:
+    active: sqlserver
+
+  #邮件发送配置
+  mail:
+    default-encoding: UTF-8
+    host: smtp.qq.com
+    password: fjhnzlfxvkvkbaee  # 邮箱授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+    username: 1127230996@qq.com  # 你的邮箱
+
+# MyBatis Plus 全局配置
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: AUTO   # 主键自增
+      logic-delete-field: deleted   # 逻辑删除字段
+      logic-not-delete-value: 0   # 未删除
+      logic-delete-value: 1   # 删除
+      table-underline: true   # 开启驼峰
+
+captcha:
+  redis:
+    key-prefix: captcha
+    expire-time: 300
+
+tencent:
+  cos:
+    secret-id: AKIDf9QZWFjz1Tox0qNjvsd9RVpvvhS4UjkZ
+    secret-key: e5IH4e1sWwBE3kHcjdJm36zhHdliRwCE
+    region-name: ap-nanjing
+    bucket-name: cbz-file-1300448090
+    url: cbz-file-1300448090.cos.ap-nanjing.myqcloud.com
+
+# 本地一些配置
+custom:
+  paramsCheckResult: TO_MESSAGE   # 这个配置用来设置增加或者更新时,参数校验结果怎么返回, TO_MESSAGE 表示,将错误的第一个字段放到message字段中,data制null, 如果是TO_DATA, 则每个错误字段放到data中

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cbz.example.mapper.ThirdPartyLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.cbz.example.entity.ThirdPartyLog">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="requestType" column="request_type" jdbcType="VARCHAR"/>
+            <result property="requestUrl" column="request_url" jdbcType="VARCHAR"/>
+            <result property="requestParams" column="request_params" jdbcType="VARCHAR"/>
+            <result property="responseResult" column="response_result" jdbcType="VARCHAR"/>
+            <result property="requestTime" column="request_time" jdbcType="TIMESTAMP"/>
+            <result property="responseTime" column="response_time" jdbcType="TIMESTAMP"/>
+            <result property="requestDuration" column="request_duration" jdbcType="INTEGER"/>
+            <result property="responseStatus" column="response_status" jdbcType="INTEGER"/>
+            <result property="requestKeyword" column="request_keyword" jdbcType="VARCHAR"/>
+            <result property="requestHost" column="request_host" jdbcType="VARCHAR"/>
+            <result property="isSuccess" column="is_success" jdbcType="TINYINT"/>
+            <result property="exceptionMessage" column="exception_message" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,request_type,request_url,
+        request_params,response_result,request_time,
+        response_time,request_duration,response_status,
+        request_keyword,request_host,is_success,
+        exception_message
+    </sql>
+</mapper>

@@ -1,0 +1,71 @@
+package com.cbz.example.entity;
+
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
+import lombok.ToString;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.io.Serializable;
+import java.math.BigDecimal;
+import java.util.Date;
+
+/**
+* 产品表
+* @author chenbozhi
+* @date 2024-5-13 3:41:09
+*/
+@Data
+@ToString
+@NoArgsConstructor
+@AllArgsConstructor
+@TableName("Product")
+public class Product implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 产品ID
+     */
+    @TableField("Id")
+    private Integer Id;
+
+    /**
+     * 产品名称
+     */
+    @TableField("Name")
+    private String Name;
+
+    /**
+     * 产品描述
+     */
+    @TableField("Description")
+    private String Description;
+
+    /**
+     * 成本价格
+     */
+    @TableField("CostPrice")
+    private BigDecimal CostPrice;
+
+    /**
+     * 产品图片
+     */
+    @TableField("Image")
+    private String Image;
+
+    /**
+     * 过期日期
+     * 注解@JsonFormat:从数据库读出日期格式时,进行转换的规则
+     * 注解@DateTimeFormat:接受从前端传入的日期格式,映射到java类日期属性的规则
+     */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @TableField("ExpiryDate")
+    private Date ExpiryDate;
+
+}
+
